@@ -216,10 +216,11 @@ class NodeBBTestMode:
         for i, chat_id in enumerate(chat_ids, 1):
             print(f"[{i}/{len(chat_ids)}] צ'אט #{chat_id}")
             
-            # בדיקה אם כבר טופל
+            # *** בדיקה קשוחה 1: האם כבר השבנו לצ'אט הזה? ***
             if chat_id in replied_chats:
                 prev_reply = replied_chats[chat_id]
-                print(f"   ⏭️  כבר טופל ב-{prev_reply.get('timestamp', 'לא ידוע')}")
+                print(f"   🛑 כבר טופל ב-{prev_reply.get('timestamp', 'לא ידוע')}")
+                print(f"   🛑 מדלג - לעולם לא נשלח שוב לצ'אט זה!")
                 print(f"   📝 הודעה מקורית: {prev_reply.get('message_preview', '')[:50]}...")
                 would_skip.append({
                     'chat_id': chat_id,
@@ -242,39 +243,64 @@ class NodeBBTestMode:
             
             print(f"   📊 מספר הודעות: {len(messages)}")
             
-            # בדיקה: רק אם יש הודעה אחת בלבד
-            if len(messages) != 1:
-                print(f"   ⏭️  מדלג - יש {len(messages)} הודעות (צריך בדיוק 1)")
+            # בדיקה: רק אם יש בדיוק 2 הודעות
+            if len(messages) != 2:
+                print(f"   ⏭️  מדלג - יש {len(messages)} הודעות (צריך בדיוק 2)")
                 would_skip.append({
                     'chat_id': chat_id,
-                    'reason': f'יש {len(messages)} הודעות (צריך 1)'
+                    'reason': f'יש {len(messages)} הודעות (צריך 2)'
                 })
                 print()
                 continue
             
-            # בדיקת ההודעה היחידה
+            # בדיקת שתי ההודעות
             first_message = messages[0]
-            sender = first_message['username']
-            content = first_message['content']
+            second_message = messages[1]
             
-            print(f"   👤 שולח: {sender}")
-            print(f"   💬 הודעה: {content[:80]}{'...' if len(content) > 80 else ''}")
+            first_sender = first_message['username']
+            second_sender = second_message['username']
+            first_content = first_message['content']
+            second_content = second_message['content']
             
-            # בדיקה אם ההודעה ממני
-            if sender == self.username:
-                print(f"   ⏭️  ההודעה היחידה היא ממך - לא צריך להגיב")
+            print(f"   👤 הודעה 1 מ-{first_sender}: {first_content[:60]}...")
+            print(f"   👤 הודעה 2 מ-{second_sender}: {second_content[:60]}...")
+            
+            # *** בדיקה קשוחה 2: האם אחת מההודעות היא התגובה האוטומטית? ***
+            if (auto_reply_message in first_content or 
+                auto_reply_message in second_content):
+                print(f"   🛑 נמצאה התגובה האוטומטית בצ'אט - כבר נשלחה!")
+                print(f"   🛑 מדלג למניעת שליחה כפולה")
                 would_skip.append({
                     'chat_id': chat_id,
-                    'sender': sender,
-                    'reason': 'ההודעה היחידה ממך'
+                    'reason': 'נמצאה תגובה אוטומטית קיימת'
                 })
-            else:
-                print(f"   ✉️  יישלח: '{auto_reply_message}'")
-                would_reply.append({
+                print()
+                continue
+            
+            # *** בדיקה קשוחה 3: האם יש הודעה ממך בצ'אט? ***
+            has_my_message = False
+            for msg in messages:
+                if msg['username'] == self.username:
+                    has_my_message = True
+                    print(f"   🛑 נמצאה הודעה ממך בצ'אט - כבר השבת!")
+                    break
+            
+            if has_my_message:
+                print(f"   🛑 מדלג למניעת שליחה כפולה")
+                would_skip.append({
                     'chat_id': chat_id,
-                    'sender': sender,
-                    'message_preview': content[:100]
+                    'reason': 'נמצאה הודעה ממך'
                 })
+                print()
+                continue
+            
+            # אם הגענו לכאן - בטוח שלא שלחנו הודעה
+            print(f"   ✅ צ'אט תקין - יישלח: '{auto_reply_message}'")
+            would_reply.append({
+                'chat_id': chat_id,
+                'sender': second_sender,
+                'message_preview': second_content[:100]
+            })
             
             print()
         

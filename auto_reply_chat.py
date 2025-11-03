@@ -255,9 +255,10 @@ class NodeBBAutoReply:
         for chat_id in chat_ids:
             print(f"\nבודק צ'אט {chat_id}...")
             
-            # בדיקה אם כבר השבנו לצ'אט הזה
+            # *** בדיקה קשוחה 1: האם כבר השבנו לצ'אט הזה? ***
             if chat_id in self.replied_chats:
-                print(f"צ'אט {chat_id} כבר קיבל תגובה בעבר")
+                print(f"🛑 צ'אט {chat_id} כבר קיבל תגובה בעבר ב-{self.replied_chats[chat_id].get('timestamp')}")
+                print(f"🛑 מדלג - לעולם לא נשלח שוב לצ'אט זה!")
                 continue
             
             # קבלת כל ההודעות בצ'אט
@@ -269,35 +270,75 @@ class NodeBBAutoReply:
             
             print(f"נמצאו {len(messages)} הודעות בצ'אט")
             
-            # בדיקה: רק אם יש הודעה אחת בלבד
-            if len(messages) != 1:
-                print(f"מדלג - יש {len(messages)} הודעות (צריך בדיוק 1)")
+            # בדיקה: רק אם יש בדיוק 2 הודעות
+            if len(messages) != 2:
+                print(f"מדלג - יש {len(messages)} הודעות (צריך בדיוק 2)")
                 continue
             
-            # בדיקת ההודעה היחידה
+            # בדיקת שתי ההודעות
             first_message = messages[0]
-            sender = first_message['username']
-            content = first_message['content']
+            second_message = messages[1]
             
-            print(f"הודעה יחידה מ-{sender}: {content[:50]}...")
+            first_sender = first_message['username']
+            second_sender = second_message['username']
+            first_content = first_message['content']
+            second_content = second_message['content']
             
-            # אם ההודעה לא ממני, שולחים תגובה אוטומטית
-            if sender != self.username:
-                print(f"שולח תגובה אוטומטית לצ'אט {chat_id}...")
-                
-                if self.send_message(chat_id, self.auto_reply_message):
-                    # שמירת הצ'אט כמי שכבר קיבל תגובה
-                    self.replied_chats[chat_id] = {
-                        'timestamp': datetime.now().isoformat(),
-                        'sender': sender,
-                        'message_preview': content[:100],
-                        'message_count': 1
-                    }
-                    self.save_replied_chats()
-                    new_replies += 1
-                    time.sleep(2)  # המתנה בין הודעות
+            print(f"הודעה 1 מ-{first_sender}: {first_content[:50]}...")
+            print(f"הודעה 2 מ-{second_sender}: {second_content[:50]}...")
+            
+            # *** בדיקה קשוחה 2: האם אחת מההודעות היא התגובה האוטומטית שלנו? ***
+            if (self.auto_reply_message in first_content or 
+                self.auto_reply_message in second_content):
+                print(f"🛑 נמצאה התגובה האוטומטית שלנו בצ'אט - כבר נשלחה!")
+                print(f"🛑 מוסיף לרשימת צ'אטים שטופלו למניעת שליחה חוזרת")
+                # שמירת הצ'אט כמי שכבר קיבל תגובה
+                self.replied_chats[chat_id] = {
+                    'timestamp': datetime.now().isoformat(),
+                    'sender': 'detected_auto_reply',
+                    'message_preview': 'נמצאה תגובה אוטומטית קיימת',
+                    'message_count': len(messages)
+                }
+                self.save_replied_chats()
+                continue
+            
+            # *** בדיקה קשוחה 3: האם יש הודעה ממני בצ'אט? ***
+            has_my_message = False
+            for msg in messages:
+                if msg['username'] == self.username:
+                    has_my_message = True
+                    print(f"🛑 נמצאה הודעה ממך בצ'אט - כבר השבת!")
+                    break
+            
+            if has_my_message:
+                print(f"🛑 מוסיף לרשימת צ'אטים שטופלו למניעת שליחה חוזרת")
+                self.replied_chats[chat_id] = {
+                    'timestamp': datetime.now().isoformat(),
+                    'sender': 'detected_my_message',
+                    'message_preview': 'נמצאה הודעה ממך',
+                    'message_count': len(messages)
+                }
+                self.save_replied_chats()
+                continue
+            
+            # אם הגענו לכאן - בטוח שלא שלחנו הודעה לצ'אט הזה
+            print(f"✅ צ'אט תקין - שולח תגובה אוטומטית לצ'אט {chat_id}...")
+            
+            if self.send_message(chat_id, self.auto_reply_message):
+                # שמירת הצ'אט כמי שכבר קיבל תגובה
+                self.replied_chats[chat_id] = {
+                    'timestamp': datetime.now().isoformat(),
+                    'sender': second_sender,
+                    'message_preview': second_content[:100],
+                    'message_count': 2,
+                    'sent_successfully': True
+                }
+                self.save_replied_chats()
+                print(f"✅ תגובה נשלחה בהצלחה ונשמרה בהיסטוריה")
+                new_replies += 1
+                time.sleep(2)  # המתנה בין הודעות
             else:
-                print(f"ההודעה היחידה היא ממני, מדלג...")
+                print(f"❌ שליחת התגובה נכשלה - לא נשמר בהיסטוריה")
             
             time.sleep(1)  # המתנה בין צ'אטים
         
