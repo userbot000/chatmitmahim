@@ -142,8 +142,8 @@ class NodeBBAutoReply:
             print(f"שגיאה בקבלת צ'אטים: {str(e)}")
             return []
 
-    def get_last_message(self, chat_id):
-        """קבלת ההודעה האחרונה בצ'אט"""
+    def get_chat_messages(self, chat_id):
+        """קבלת כל ההודעות בצ'אט"""
         try:
             response = self.session.get(
                 f"{self.base_url}/user/{self.userslug}/chats/{chat_id}",
@@ -190,14 +190,13 @@ class NodeBBAutoReply:
                                 'content': message_content
                             })
                 
-                if messages:
-                    return messages[-1]  # ההודעה האחרונה
+                return messages  # מחזיר את כל ההודעות
             
-            return None
+            return []
             
         except Exception as e:
             print(f"שגיאה בקבלת הודעות מצ'אט {chat_id}: {str(e)}")
-            return None
+            return []
 
     def send_message(self, chat_id, message):
         """שליחת הודעה לצ'אט"""
@@ -248,31 +247,44 @@ class NodeBBAutoReply:
                 print(f"צ'אט {chat_id} כבר קיבל תגובה בעבר")
                 continue
             
-            # קבלת ההודעה האחרונה
-            last_message = self.get_last_message(chat_id)
+            # קבלת כל ההודעות בצ'אט
+            messages = self.get_chat_messages(chat_id)
             
-            if last_message:
-                sender = last_message['username']
-                content = last_message['content']
+            if not messages:
+                print(f"אין הודעות בצ'אט {chat_id}")
+                continue
+            
+            print(f"נמצאו {len(messages)} הודעות בצ'אט")
+            
+            # בדיקה: רק אם יש הודעה אחת בלבד
+            if len(messages) != 1:
+                print(f"מדלג - יש {len(messages)} הודעות (צריך בדיוק 1)")
+                continue
+            
+            # בדיקת ההודעה היחידה
+            first_message = messages[0]
+            sender = first_message['username']
+            content = first_message['content']
+            
+            print(f"הודעה יחידה מ-{sender}: {content[:50]}...")
+            
+            # אם ההודעה לא ממני, שולחים תגובה אוטומטית
+            if sender != self.username:
+                print(f"שולח תגובה אוטומטית לצ'אט {chat_id}...")
                 
-                print(f"הודעה אחרונה מ-{sender}: {content[:50]}...")
-                
-                # אם ההודעה האחרונה לא ממני, שולחים תגובה אוטומטית
-                if sender != self.username:
-                    print(f"שולח תגובה אוטומטית לצ'אט {chat_id}...")
-                    
-                    if self.send_message(chat_id, self.auto_reply_message):
-                        # שמירת הצ'אט כמי שכבר קיבל תגובה
-                        self.replied_chats[chat_id] = {
-                            'timestamp': datetime.now().isoformat(),
-                            'sender': sender,
-                            'message_preview': content[:100]
-                        }
-                        self.save_replied_chats()
-                        new_replies += 1
-                        time.sleep(2)  # המתנה בין הודעות
-                else:
-                    print(f"ההודעה האחרונה היא ממני, מדלג...")
+                if self.send_message(chat_id, self.auto_reply_message):
+                    # שמירת הצ'אט כמי שכבר קיבל תגובה
+                    self.replied_chats[chat_id] = {
+                        'timestamp': datetime.now().isoformat(),
+                        'sender': sender,
+                        'message_preview': content[:100],
+                        'message_count': 1
+                    }
+                    self.save_replied_chats()
+                    new_replies += 1
+                    time.sleep(2)  # המתנה בין הודעות
+            else:
+                print(f"ההודעה היחידה היא ממני, מדלג...")
             
             time.sleep(1)  # המתנה בין צ'אטים
         

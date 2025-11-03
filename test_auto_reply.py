@@ -122,8 +122,8 @@ class NodeBBTestMode:
             print(f"❌ שגיאה בקבלת צ'אטים: {str(e)}\n")
             return []
 
-    def get_last_message(self, chat_id):
-        """קבלת ההודעה האחרונה בצ'אט"""
+    def get_chat_messages(self, chat_id):
+        """קבלת כל ההודעות בצ'אט"""
         try:
             response = self.session.get(
                 f"{self.base_url}/user/{self.userslug}/chats/{chat_id}",
@@ -169,10 +169,9 @@ class NodeBBTestMode:
                                 'content': message_content
                             })
                 
-                if messages:
-                    return messages[-1]
+                return messages  # מחזיר את כל ההודעות
             
-            return None
+            return []
             
         except Exception as e:
             print(f"   ⚠️  שגיאה בקריאת צ'אט {chat_id}: {str(e)}")
@@ -216,10 +215,10 @@ class NodeBBTestMode:
                 print()
                 continue
             
-            # קבלת ההודעה האחרונה
-            last_message = self.get_last_message(chat_id)
+            # קבלת כל ההודעות בצ'אט
+            messages = self.get_chat_messages(chat_id)
             
-            if not last_message:
+            if not messages:
                 print(f"   ⚠️  לא נמצאו הודעות בצ'אט")
                 would_skip.append({
                     'chat_id': chat_id,
@@ -228,19 +227,33 @@ class NodeBBTestMode:
                 print()
                 continue
             
-            sender = last_message['username']
-            content = last_message['content']
+            print(f"   📊 מספר הודעות: {len(messages)}")
+            
+            # בדיקה: רק אם יש הודעה אחת בלבד
+            if len(messages) != 1:
+                print(f"   ⏭️  מדלג - יש {len(messages)} הודעות (צריך בדיוק 1)")
+                would_skip.append({
+                    'chat_id': chat_id,
+                    'reason': f'יש {len(messages)} הודעות (צריך 1)'
+                })
+                print()
+                continue
+            
+            # בדיקת ההודעה היחידה
+            first_message = messages[0]
+            sender = first_message['username']
+            content = first_message['content']
             
             print(f"   👤 שולח: {sender}")
             print(f"   💬 הודעה: {content[:80]}{'...' if len(content) > 80 else ''}")
             
             # בדיקה אם ההודעה ממני
             if sender == self.username:
-                print(f"   ⏭️  ההודעה האחרונה היא ממך - לא צריך להגיב")
+                print(f"   ⏭️  ההודעה היחידה היא ממך - לא צריך להגיב")
                 would_skip.append({
                     'chat_id': chat_id,
                     'sender': sender,
-                    'reason': 'ההודעה האחרונה ממך'
+                    'reason': 'ההודעה היחידה ממך'
                 })
             else:
                 print(f"   ✉️  יישלח: '{auto_reply_message}'")
