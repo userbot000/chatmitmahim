@@ -123,7 +123,7 @@ class NodeBBTestMode:
             return []
 
     def get_chat_messages(self, chat_id):
-        """קבלת כל ההודעות בצ'אט"""
+        """קבלת כל ההודעות בצ'אט (ללא הודעות מערכת)"""
         try:
             response = self.session.get(
                 f"{self.base_url}/user/{self.userslug}/chats/{chat_id}",
@@ -142,14 +142,23 @@ class NodeBBTestMode:
                     content_lines = []
                     
                     for line in lines:
+                        # דילוג על כפתורים ופעולות
                         if line in ['עריכה', 'מחיקה', 'שחזור', 'העתק טקסט', 'העתק קישור',
-                                   'הצמד הודעה', 'בטל את הצמדת ההודעה', 'הצטרף לחדר']:
+                                   'הצמד הודעה', 'בטל את הצמדת ההודעה']:
+                            continue
+                        
+                        # דילוג על הודעות מערכת
+                        if 'הצטרף לחדר' in line or 'joined the room' in line.lower():
                             continue
                         
                         if len(line) == 1:
                             if username and content_lines:
                                 message_content = ' '.join(content_lines).strip()
-                                if message_content and len(message_content) > 1:
+                                # סינון הודעות מערכת נוספות
+                                if (message_content and 
+                                    len(message_content) > 1 and 
+                                    'הצטרף לחדר' not in message_content and
+                                    'joined the room' not in message_content.lower()):
                                     messages.append({
                                         'username': username,
                                         'content': message_content
@@ -163,13 +172,17 @@ class NodeBBTestMode:
                     
                     if username and content_lines:
                         message_content = ' '.join(content_lines).strip()
-                        if message_content and len(message_content) > 1:
+                        # סינון הודעות מערכת נוספות
+                        if (message_content and 
+                            len(message_content) > 1 and 
+                            'הצטרף לחדר' not in message_content and
+                            'joined the room' not in message_content.lower()):
                             messages.append({
                                 'username': username,
                                 'content': message_content
                             })
                 
-                return messages  # מחזיר את כל ההודעות
+                return messages  # מחזיר רק הודעות אמיתיות ממשתמשים
             
             return []
             
