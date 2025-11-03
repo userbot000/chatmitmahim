@@ -346,9 +346,9 @@ class NodeBBAutoReply:
 
 def main():
     # הגדרת פרטי התחברות - ערוך את הערכים כאן
-    username = "הבל-הבלים"  # שם המשתמש שלך בפורום
-    password = "pwM9tDN4Y@uV9"  # הסיסמה שלך בפורום
-    auto_reply = "תודה על ההודעה! אני אחזור אליך בהקדם האפשרי."  # התגובה האוטומטית
+    username = "שם משתמש"
+    password = "סיסמא"
+    auto_reply = "אין לי אפשרות לענות בצ'אט אנא שלח לי מייל המייל שלי "
     
     if not username or username == "YOUR_USERNAME":
         print("שגיאה: יש לערוך את שם המשתמש והסיסמה בקוד")
@@ -369,3 +369,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
