@@ -29,6 +29,20 @@ class NodeBBTestMode:
         """התחברות לפורום"""
         try:
             print(f"🔐 מתחבר לפורום בתור '{self.username}'...")
+            
+            # קודם מקבלים CSRF token
+            config_response = self.session.get(
+                f"{self.base_url}/api/config",
+                headers=self.headers
+            )
+            
+            if config_response.ok:
+                config_data = config_response.json()
+                csrf_token = config_data.get('csrf_token')
+                if csrf_token:
+                    self.headers['X-CSRF-Token'] = csrf_token
+                    print(f"   🔑 קיבלתי CSRF token")
+            
             login_data = {
                 "username": self.username,
                 "password": self.password
@@ -46,6 +60,18 @@ class NodeBBTestMode:
                     user_data = response_data.get('response', {})
                     self.userslug = user_data.get('userslug')
                     self.session.cookies.update(login_response.cookies)
+                    
+                    # עדכון CSRF token אחרי התחברות
+                    config_response2 = self.session.get(
+                        f"{self.base_url}/api/config",
+                        headers=self.headers
+                    )
+                    if config_response2.ok:
+                        config_data2 = config_response2.json()
+                        csrf_token2 = config_data2.get('csrf_token')
+                        if csrf_token2:
+                            self.headers['X-CSRF-Token'] = csrf_token2
+                    
                     print(f"✅ התחברות הצליחה! userslug: {self.userslug}\n")
                     return True
             
