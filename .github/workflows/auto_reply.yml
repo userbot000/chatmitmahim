@@ -1,0 +1,38 @@
+name: Auto Reply to Chats
+
+on:
+  schedule:
+    # רץ פעמיים ביום - בשעה 08:00 ו-20:00 UTC (10:00 ו-22:00 בישראל)
+    - cron: '0 8,20 * * *'
+  
+  # אפשרות להריץ ידנית
+  workflow_dispatch:
+
+jobs:
+  auto-reply:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run auto reply script
+      run: python auto_reply_chat.py
+    
+    - name: Upload replied chats log
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: replied-chats-log
+        path: replied_chats_*.json
+        retention-days: 30
